@@ -1,13 +1,29 @@
-FROM frekele/gradle:3.3-jdk8
+FROM gradle:4.10.2-jdk8
 
-ENV ANDROID_HOME /opt/android-sdk-linux
-ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools
+USER root
 
+# Install Build Essentials
+RUN apt-get update -qq && \
+    apt-get install build-essential file apt-utils -y
 
+ENV SDK_URL="https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip" \
+    ANDROID_HOME="/usr/local/android-sdk"
+ARG ANDROID_VERSION
+ARG ANDROID_BUILD_TOOLS_VERSION
 
-RUN apt-get update && apt-get install -y wget software-properties-common unzip && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-    
-COPY install.sh install.sh
+# Download Android SDK
+RUN mkdir "$ANDROID_HOME" .android \
+    && cd "$ANDROID_HOME" \
+    && curl -o sdk.zip $SDK_URL \
+    && unzip sdk.zip \
+    && rm sdk.zip \
+    && yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses
 
-RUN chmod +x install.sh && sync && ./install.sh && rm install.sh
+# Install Android Build Tool and Libraries
+RUN $ANDROID_HOME/tools/bin/sdkmanager --update
+RUN $ANDROID_HOME/tools/bin/sdkmanager \
+    "platforms;android-${ANDROID_VERSION}" \
+    "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" \
+    "extras;android;m2repository" \
+    "extras;google;m2repository" \
+    "platform-tools"
